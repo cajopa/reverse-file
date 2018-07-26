@@ -31,7 +31,7 @@ class ReversibleTextIOWrapper(io.TextIOWrapper):
             offset = min(file_size, offset + self.buf_size)
             self.seek(file_size - offset)
             buffer = self.read(min(remaining_size, self.buf_size))
-            remaining_size -= self.buf_size
+            remaining_size -= len(buffer)
             lines = buffer.split('\n')
             
             # the first line of the buffer is probably not a complete line so
@@ -41,16 +41,14 @@ class ReversibleTextIOWrapper(io.TextIOWrapper):
                 # if the previous chunk starts right from the beginning of line
                 # do not concact the segment to the last line of new chunk
                 # instead, yield the segment first 
-                if buffer[-1] is not '\n':
-                    lines[-1] += segment
-                else:
+                if buffer[-1] == '\n':
                     yield segment
+                else:
+                    lines[-1] += segment
             
             segment = lines[0]
             
-            for index in range(len(lines) - 1, 0, -1):
-                if len(lines[index]):
-                    yield lines[index]
+            yield from (x for x in reversed(lines) if x)
         
         # Don't yield None if the file was empty
         if segment is not None:
